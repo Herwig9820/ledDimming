@@ -20,15 +20,20 @@
 *                                                                                               *
 ************************************************************************************************/
 
+
+// preprocessor directive: compile using Bresenham's line algorithm or traditional single-pulse PWM
+#define BRESENHAM_ALGORITHM 1   // 0 = use single-pulse PWM, 1 = use Bresenham's line algorithm
+
+
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // !! characteristics of the LED controller: the next 3 values can be changed by the user (refer to the doc) !! 
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-constexpr long timer1Frequency{ 3200L };                                    // timer frequency (3200 Hz by default)
+constexpr uint32_t timer1Frequency{ 3200L };                                // timer frequency (3200 Hz by default)
 
 // brightness levels (steps up or down) and minimum brightness level for each individual LED
-constexpr uint16_t brightness_bits[3]{ 5,7,9 };                             // number of bits used (4 to 10 bits are good choices: 16 to 1024 brightness levels)
-constexpr uint16_t lowestBrightnessMinimalFlicker[3]{ 0, 2, 7 };            // lowest brightness level that does not produce flicker (minimum is 0)
+constexpr uint16_t brightness_bits[3]{ 5, 7, 9 };                           // number of bits used (4 to 10 bits are good choices: 16 to 1024 brightness levels)
+constexpr uint16_t lowestBrightnessMinimalFlicker[3]{ 0, 2, 8 };            // lowest brightness level that does not produce flicker (minimum is 0)
 
 
 /* NOTES
@@ -58,7 +63,7 @@ void setup()
 {
     Serial.begin(115200);                                                   // initialize serial communication
 
-        // check for valid board type  
+    // check for valid board type  
 #if defined (ARDUINO_AVR_UNO)
     constexpr int redLedPin = 2;                                            // red LED output pin for Arduino UNO (labeled 'D2' on the board)
 #elif defined(ARDUINO_AVR_MEGA2560) 
@@ -73,8 +78,8 @@ void setup()
     pinMode(blueLedPin, OUTPUT);                                            // blue LED output pin
 
     // setup timer 1 (16 bit) for phase correct PWM; enable overflow interrupt (SEE ATmega328P DATASHEET)
-    constexpr long timer1ClockFreq{ F_CPU / 8 };                            // timer clock frequency 2 MHz (prescaler factor 8)
-    constexpr long timer1Top{ timer1ClockFreq / timer1Frequency / 2 };      // timer counts up and down => timer1Top x 2 steps 
+    constexpr uint32_t timer1ClockFreq{ F_CPU / 8 };                        // timer clock frequency 2 MHz (prescaler factor 8)
+    constexpr uint32_t timer1Top{ timer1ClockFreq / timer1Frequency / 2 };  // timer counts up and down => timer1Top x 2 steps 
     TCCR1A = _BV(WGM11);                                                    // WGM13 & WGM11 set: PWM, phase correct, TOP = ICR1 register 
     TCCR1B = _BV(WGM13) | _BV(CS11);                                        // CS11: prescaler factor 8
     ICR1 = timer1Top;                                                       // counter TOP value
@@ -126,9 +131,9 @@ void loop()
 
             // gamma correction: squaring the brightness value (and scaling it back into the original brightness range) is a good approximation. '+1': scale from 0 to max. brightness 
             uint16_t br = max(((uint32_t)(pulsesON_0_n[index]) * (pulsesON_0_n[index] + 1)) >> brightness_bits[index], lowestBrightnessMinimalFlicker[index]);
-            
+
             // change direction ?
-            if (((br == lowestBrightnessMinimalFlicker[index]) && (direction[index] == -1)) || (br == brightnessLevelLedON[index])) {     
+            if (((br == lowestBrightnessMinimalFlicker[index]) && (direction[index] == -1)) || (br == brightnessLevelLedON[index])) {
                 direction[index] = -direction[index];
             }
 
@@ -162,8 +167,9 @@ SIGNAL(TIMER1_OVF_vect) {
 
     if (initValues) { return; }                                             // do nothing until the main program has set the initial values
 
-    /* ALGORITHM
-       ---------
+#if BRESENHAM_ALGORITHM 
+    /* BRESENHAM'S ALGORITHM
+       ---------------------
      Each time the ISR runs, the algorithm adds the set LED brightness level to a step counter, modulo the defined 'LED ON' brightness level.
     If the new value of the step counter is lower than the old value, switch the LED ON. Otherwise, switch the LED OFF.
 
@@ -181,10 +187,12 @@ SIGNAL(TIMER1_OVF_vect) {
         // start of a new LED refresh period ? Then LOAD the desired LED brightness, as set by the main program during the last LED refresh period
         // variable pulseTrainCount counts the number of LED refresh periods for each LED (use: see main loop) 
         if (progress[index] == 0) { ledBrightness[index] = brightness[index]; pulseTrainCount[index]++; }
-        ++progress[index] %= brightnessLevelLedON[index];
+        ++progress[index] %= brightnessLevelLedON[index];                                       // maintain progress counter(0 to maximum brightness - 1 = brightness levels - 2)
 
         if (ledBrightness[index] == 0) { ledBit <<= 1; continue; }                              // LED OFF ? Nothing to do, move to next LED
 
+
+        // *** START OF BRESENHAM'S LINE ALGORITHM ***
         if (stepCounter[index] == 0) {                                                          // at the start of a new pulse train (LED refresh period) ?
             ledStateBits |= ledBit;                                                             // start the pulse train by setting the LED ON
             stepCounter[index] = (ledBrightness[index] == brightnessLevelLedON[index]) ? 0 :    // maximum LED brightness ? reset step counter immediately
@@ -195,9 +203,26 @@ SIGNAL(TIMER1_OVF_vect) {
             if ((newStep < stepCounter[index]) && (newStep != 0)) { ledStateBits |= ledBit; }   // ONLY if the new step is smaller than the previous step: set the LED ON
             stepCounter[index] = newStep;                                                       // update the step counter (after a full LED refresh period, this value will be 0) 
         }
+        // *** END OF BRESENHAM'S LINE ALGORITHM ***
+
 
         ledBit <<= 1;                                                                           // advance to the LED state bit to the bit for the next LED
     }
+
+#else
+    // SINGLE-PULSE PWM ALGORITHM
+    // --------------------------
+    for (int index = 0; index < 3; index++) {                                                   // for the red, green, blue LED
+        // start of a new LED refresh period ? Then LOAD the desired LED brightness, as set by the main program during the last LED refresh period
+        if (progress[index] == 0) { ledBrightness[index] = brightness[index]; pulseTrainCount[index]++; }
+
+        if(progress[index] < ledBrightness[index]) { ledStateBits |= ledBit; }
+        ++progress[index] %= brightnessLevelLedON[index];
+
+        ledBit <<= 1;                                                                           // advance to the LED state bit to the bit for the next LED
+    }
+#endif
+
 
     // switch LEDs ON or OFF now. Do NOT use digitalWrite() because that takes way to much time and would interfere with the pulse train algorithm
     // write directly to the ATmega328P PORT D register (Arduino Uno pins 2 to 4) or PORTK register (Arduino Mega pins 64 to 66)
