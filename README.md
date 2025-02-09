@@ -7,7 +7,7 @@ An interrupt service routine (ISR) called at fixed time intervals will create 'm
 
 ![mega2560_rgb](https://github.com/user-attachments/assets/bf9e4c30-b193-4261-aed6-a050469a6ac4)
 
-To try this out yourself, you'll need
+To try this out yourself, you'll need 
 * A small breadboard
 * Arduino Mega2560 (this figure) or Arduino UNO (and with slight code adaptations, any Arduino)
 * three LEDs (in this demo, 3 LEDs: red, green and blue)
