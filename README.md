@@ -1,118 +1,142 @@
-# Justina: a fully documented, easy-to-use programming language for Arduino
+# Dim Multiple Analog LEDs Efficiently With Only One Timer, Using Bresenham's Line Algorithm instead of PWM
 
-![image](https://github.com/Herwig9820/Justina_interpreter/assets/74488682/f277744a-f5b7-4839-b0e2-feb266d47aaa)
+![uno_rgb](https://github.com/user-attachments/assets/fda7d0e5-87f4-4eff-90d0-e3861daa5a1c)
 
-Justina (short for 'Just an Interpreter for Arduino') was developed and built around a few objectives. 
-* On top of the list: simplicity for the user. Justina is a structured language, but it’s non-object oriented (as opposed to the powerful but more complex c++ and Python languages).
-* Equally important: Justina was built with Arduino in mind - more specifically, 32-bit Arduino’s: boards with a SAMD processor (like the nano 33 IoT), the nano ESP32 and the nano RP2040.
-* High quality documentation: the Justina user manual completely covers functionality, including more technical aspects like integration with c++, system callbacks, examples and so on.
-  
+The objective of this small project is to demonstrate how a single Arduino timer can be used to control the brightness of multiple LEDs and obtain smooth dimming.
+An interrupt service routine (ISR) called at fixed time intervals will create 'multi-pulse trains' instead of traditional single-pulse PWM (Pulse Width Modulation) waveforms, reducing or even eliminating flicker drastically with a timer frequency that can be (much) lower than with PWM. This reduces processor time spent in the interrupt service routine considerably.
 
-Justina does not impose any requirements or restrictions related to hardware (pin assignments, interrupts, timers,... - it does not use any), nor does it need to have any knowledge about it for proper operation.
-The Justina syntax has been kept as simple as possible. A program consists of statements. A statement either consists of
-*	a single expression (always yielding a result).
-*	a command, starting with a keyword, optionally followed by a list of expressions (such a statement is called a command, because it ‘does’ something without actually calculating a result)
+![mega2560_rgb](https://github.com/user-attachments/assets/bf9e4c30-b193-4261-aed6-a050469a6ac4)
 
-![image](https://github.com/Herwig9820/Justina_interpreter/assets/74488682/6e3fd8ab-006c-4d4a-bc63-2192c335afcb)
+To try this out yourself, you'll need
+* A small breadboard
+* Arduino Mega2560 (this figure) or Arduino UNO (and with slight code adaptations, any Arduino)
+* three LEDs (in this demo, 3 LEDs: red, green and blue)
+* three 330 Ohm resistors (for 5 Volt Arduino's)
+* wires
 
-Because Justina is an interpreted language, a Justina  program is not compiled into machine language but it is parsed into so called tokens before execution. Parsing is a fast process, which makes Justina the ideal tool for quick prototyping. Once it is installed as an Arduino library, call Justina from within an Arduino c++ program and you will have the Justina interpreter ready to receive commands, evaluate expressions and execute Justina programs. 
-You can enter statements directly in the command line of the Arduino IDE (the Serial monitor by default, a TCP IP client, ...) and they will immediately get executed, without any programming.
+Connect each of the 3 LED anodes, in series with a resistor, to one of the 3 designated Arduino output pins:
+Arduino UNO: pins D2, D3 and D4
+Arduino Mega2560: digital pins D64, D55 and D66 (labeled as A10, A11 and A12, because they can also be used as analog pin).
+Connect the 3 LED cathodes to the Arduino ground pin. That's it !
 
-#### A basic example, without programming
-We will first set the console display width for calculation results to 40 characters wide (by default, it's set to 64) and set the angle mode to degrees. We'll then define Arduino pin 17 as an output and write a HIGH value to the pin. Finally, we'll calculate the cosine of 60°. 
-This is all done by typing the next 3 lines in the command line of the Arduino IDE Serial Monitor (each time followed by ENTER):
+# PWM and When Not to Use It
 
-![image](https://github.com/Herwig9820/Justina_interpreter/assets/74488682/68c85502-383f-492e-8f76-44bd50de79ee)
+If you only need to control brightness on a couple of LEDs, timer PWM is the preferred method.
+But what if you have, let's say, 8 LEDs that need to be dimmed (if you have enough output pins available, of course) ? First of all, you won't have enough timer PWM outputs and second, even if you would, it would probably be bad design practice to sacrifice all these timers for that purpose.
+Luckily enough, there's another approach - one that needs only one timer, producing a timer interrupt at fixed time intervals.
+The timer ISR (interrupt service routine) is then responsible for switching the LEDs ON and OFF, creating waveforms with the required duty cycles to obtain smooth dimming without noticeable flicker as perceived by the human eye.
+* flicker: the human eye will perceive a movie, a LED brightness, … as flicker-free when the 'refresh rate' of the frames in the movie, or of the waveform switching ON and OFF a LED, … is high enough
+* smooth dimming: especially when the brightness of a LED is increased or decreased slowly, you'll need sufficiently small steps to trick the human eye in creating a perception of smooth dimming
 
-The result will look like this:
+With traditional timer PWM (the PWM waveform is created by the timer hardware) the timer output frequency (PWM frequency) is not critical: as long as it is not below 50 Hz (people with eyes more susceptible to flicker will say 100 Hz and some will even suggest 200 Hz) no flicker will be noticeable. But internally, the PWM signal is constructed by a much higher frequency: the timer input frequency which is derived from the system clock. The ratio between the two clocks will determine the PWM resolution and vice versa.
 
-![image](https://github.com/Herwig9820/Justina_interpreter/assets/74488682/d7381581-394a-4305-a506-3b3500b850c6)
+When creating a PWM signal using interrupts, the timer itself will not produce a PWM waveform; it will trigger ISR calls instead. The ISR will control a counter, maintained in software, to construct the PWM waveform with a much lower frequency than the timer frequency.
 
-Statements you type are echoed after the Justina prompt (“Justina>“), providing a history of what has been entered. Multiple statements can be entered on a single line, separated by semicolons.
-The result of  the last expression entered in the command line is printed on the next line. In this example: both digitalWrite and digitalRead are functions, digitalWrite returning the value written to the pin (1 is the value of predefined constant HIGH) and digitalRead reading back that same value from the pin .
+The solution seems straightforward: to avoid flicker, increase the timer frequency. But that can prove to be difficult: to obtain a flicker-free PWM waveform, also here the resolution will determine the ratio between counter input and output frequency. Example: if 64 PWM steps are required (6 bits PWM resolution), the timer output (software counter input) frequency needs to be 3200 Hz (that is, if we are happy with 3200 / 64 = 50 Hz PWM frequency). But for very slow, smooth dimming (no visible steps when decreasing or increasing LED brightness) 512 PWM steps might be required (9 bits resolution) leading to a timer output (software counter input) frequency of 25600 Hz.
+
+Do you see the problem ? Even if an Arduino UNO or Mega2560 would be capable enough to handle 25600 interrupts per second and perform other tasks as well (spoiler: they are not) this would simply mean a waste of processor time.
+
+But there's another way that will prove to be useful in most cases: use Bresenham's line algorithm to create waveforms consisting not of a single pulse (PWM) but of a 'pulse train'. With a timer frequency that is much lower (3200 Hz or even lower), more or less the same result can be obtained while processor loads will be reduced.
+And the nice thing is: you can even 'reuse' a timer already used for another purpose - as long as it is working with a fixed timer frequency within an acceptable range.
+
+# Bresenham's Line Algorithm
+
+Bresenham's Line Algorithm ? Sounds complicated, but it isn't !
+This simple algorithm was first introduced by Mr. Bresenham, back in 1962, to draw an approximation for a line in a pixel matrix, using efficient integer arithmetic only. In the figure attached, a line (in this example: through the origin) with slope = 7/11 is shown. Underneath, the y-coordinates are shown for each x-value.
+
+Of course one could calculate all these y-coordinates, round them to obtain integer values and use these values to select the pixels to switch 'ON' to draw the best line approximation.
+
+But we'll perform a very simple calculation instead: Bresenham's Line Algorithm (please refer to the figure). And we'll even simplify it a little because we won't bother about rounding - that will be irrelevant once we move to LED dimming.
+* Starting with the number 0 (for x-coordinate 0), we add 7 (slope nominator), divide that by 11 (slope denominator) and use the remainder as result (modulo operation).
+* Then the same calculation is applied for x-coordinates 1, 2... to 11, each time using the previous result us input.
+* This results in the following sequence: 0, 7, 3, 10, 6, 2, 9, 5, 1, 8, 4, 0 (see bottom of the picture).
+* Each time a calculated number is smaller than the previous one, the y-coordinate increments by 1: we now have identified all pixels being part of the line approximation (the pixels colored green in the picture) !
+Not only this calculation is straightforward, it uses integer arithmetic only (instead of much slower floating point operations). For each calculation step, only the previous step result is needed - no need to store the complete sequence of results.
+
+# LED Dimming With Bresenham's Line Algorithm
+
+So, to draw an approximation for a line with slope 7/11 in a pixel grid, the y-coordinate needs to be incremented 7 times while the x-coordinate is incremented 11 times and y-coordinate increments should be distributed as evenly as possible.
+
+But what's the link between a grid of pixels and a simple LED ?
+
+Imagine a LED with 12 (not 11) brightness levels (0 = OFF, 11 = fully ON) and a desired brightness level 7. So, again, 7/11: within 11 consecutive ISR calls, the LED needs to be switched ON 7 times and switched OFF 4 times. And what's more, to prevent flicker, the 7 ON-pulses must be spread as evenly as possible over the 11 timer periods.
+
+Ring a bell ? Yes, Bresenham's Line Algorithm ! Please refer to the figure for a comparison with PWM, always for brightness level 7/11. It's easy to see that, for a same timer frequency, the 'perceived' LED refresh time is smaller.
+
+In reality, for some applications we'll probably want more brightness levels (smaller brightness steps means smoother dimming) - but that doesn't change the algorithm.
+
+# Bresenham's Line Algorithm Versus PWM
+
+The screenshot (see figure) is a capture of both a PWM waveform and a multi-pulse (Bresenham's line algorithm) waveform, each driving a LED with 128 brightness levels (0 = OFF, 127 = fully ON) and with a set brightness of 21/127. The timer frequency is 3000 Hz.
+The LED refresh period is 127 x (1/3000) = 42.33 milliseconds (refresh frequency 23.62 Hz), which is too long for the human eye to perceive a stable LED brightness using PWM. In fact, using PWM any LED brightness other than fully ON or OFF will produce huge flicker with a timer frequency of 3000 Hz.
+But using Bresenham's line algorithm, the required ON time is distributed over the complete LED refresh period, creating a number of evenly distributed pulses (pulse train) equal to the set brightness (in the example: 21 pulses). This decreases the 'perceived' refresh period considerably (in the example: to 42.33 / 21 = 2 milliseconds (500 Hz) preventing flicker from occurring).
+
+### LED refresh frequency
+
+Whether the software-created waveform is created with PWM or Bresenham's line algorithm: with an n-bit brightness resolution, one 'technical' LED refresh period consists of 2^n-1 timer periods and the number of LED brightness levels is 2^n.
+level 0 means LED OFF during 2^n - 1 timer periods
+* level 2^n - 1 means LED ON during 2^n - 1 timer periods
+* As we have seen, Bresenham's algorithm nicely distributes ON pulses where PWM doesn't.
+
+However, in both cases:
+
+  **(technical) LED refresh frequency = timer frequency / (2^n - 1)**
+
+# Low Brightness Levels
+
+### Perceived LED refresh frequency
+Let's define the perceived LED frequency as the frequency determining whether there will be noticeable flicker. Its name stems from the fact that, for very low LED refresh frequencies, this is the frequency at which you would 'see' the individual pulses appear.
+
+For PWM, LED refresh frequency and perceived LED refresh frequency are equal.
+
+With Bresenham's line algorithm, the 'perceived' LED refresh frequency (directly leading to flicker if too large) depends on the brightness level. The perceived LED refresh frequency:
+
+* equals the LED refresh frequency for brightness levels 1 and 2^n - 2, because there's only 1 'LED ON' or 'LED OFF' pulse to distribute (same as PWM)
+* is doubled for brightness level 2 and 2^n - 3, because 2 'LED ON' or 'LED OFF' pulses are now distributed.
+* approaches a maximum for a brightness level approaching half the number of brightness levels (many pulses to distribute)
+So the perceived refresh frequency is lowest for very low and for very high brightness levels. But you really need to worry only about the lowest brightness levels, because the sensitivity of the human eye for flicker (and for brightness changes) is much higher there. The solution is straightforward: don't use these (very) low brightness levels and you'll be able to lower the timer output frequency considerably.
+
+For low brightness levels ( brightness level < 2^n / 2):
+
+  **Perceived LED refresh frequency = LED frequency x brightness level**
+  **= timer frequency / (2^n - 1) x brightness level**
+
+As shown in the first figure (above), with a timer frequency of 3200 Hz and 512 brightness levels, setting a minimum brightness level 8 (1.57% of maximum brightness) will get rid of all, or most, low-brightness flicker (all depends on ambient lighting, eye sensitivity etc.). If flicker is still noticeable, increase minimum brightness with 1 or 2 steps. Or increase timer frequency a little.
+
+Using PWM, you would need a timer output and associated ISR execution around 30 kHz - either impossible or a waste of processor time.
 
 
-# A few highlights
-*	More than 250 built-in functions, commands and operators, 70+ predefined symbolic constants.
-*	More than 30 functions directly targeting Arduino IO ports and memory, including some new.
-*	Extended operator set includes relational, logical, bitwise operators, compound assignment operators, pre- and postfix increment operators.
-*	Two angle modes: radians and degrees.
-*	Scalar and array variables.
-*	Floating-point, integer and string data types.
-*	Perform integer arithmetic and bitwise operations in decimal or hexadecimal number format.
-*	Display settings define how to display calculation results: output width, number of digits / decimals to display, alignment, base (decimal, hex), …
-* Input and output: Justina reads data from / writes data to multiple input and output devices (connected via Serial, TCP IP, SPI, I2C...). You can even switch the console from the default (typically Serial) to another input or output device (for instance, switch console output to an OLED screen).
-* With an SD card breakout board connected via SPI, Justina creates, reads and writes SD card files...
+### Excel tool
+The gitHub repository for this project contains a useful Excel file, allowing to calculate:
 
-![image](https://github.com/Herwig9820/Justina_interpreter/assets/74488682/c1eb6138-eb02-48ce-821d-73c8f42acaa5)
-
-* In Justina, input and output commands work with argument lists: for instance, with only one statement, you can read a properly formatted text line from a terminal or an SD card file and parse its contents into a series of variables.
+* required settings (timer output frequency and lowest brightness level) in function of selected brightness resolution (bits), minimum lowest brightness (%) and minimum acceptable 'perceived' LED refresh frequency for lowest brightness
+* lowest brightness (percentage) and 'perceived' LED refresh frequency frequency for lowest brightness in function of settings (timer output frequency, lowest brightness level and brightness resolution)
+See the examples in the second figure above.
 
 
+### Note
+Flicker is easiest to see in darker ambient conditions. Rapid eye movements can reveal flicker even at higher rates. So you will have to experiment a little.
 
-# Programming
-* Write program functions with both mandatory and optional parameters that accept scalar and array arguments. When calling a function, variables (including arrays) are passed by reference, while constants and the results of expressions are passed by value. 
-* Variables or constants declared within a program can be global (accessible throughout the Justina program), local (accessible only within a Justina function), or static (accessible within one Justina function, with the value preserved between calls). 
-* Variables not declared within a program but by a user from the command line are called user variables (or user constants). 
-* Programs have access to user variables, and users have access to global program variables from the command line. User variables preserve their values when a program is cleared or another program is loaded.
-* Parsing and execution errors are clearly indicated, with error numbers identifying the nature of the error.
-* Error trapping, if enabled, ensures that an error will not terminate a program; instead, the error can be handled in code (either in the procedure where the error occurred or in a ‘caller’ procedure). It’s even possible to trap an error in the command line. 
-* If Justina program files are available on an SD card (assuming an SD card board is connected), they can be directly read and parsed from there. Alternatively, your computer can send Justina program files to an Arduino, provided you use a Terminal app that can send files (the Arduino IDE does not provide that functionality; however, a very good—and free—choice is YAT Terminal).
+# 7 Finally: Dimming Speed
 
+The human eye is not only sensitive to flicker but also to abrupt brightness changes (e.g., while dimming a LED). Just as with flicker, this is especially true in low brightness conditions. But this means that, if you use Bresenham's line algorithm and set a minimum brightness level, you'll avoid (or minimize) not only flicker but also the most noticeable brightness level changes, coming closer to a perception of continuous, smooth dimming without flicker !
 
-# Justina program editing
-You can use any text editor to write and edit your programs. But you might consider using Notepad++ as text editor, because a specific 'User Defined Language' (UDL) file for Justina is available to provide Justina syntax highlighting.
+Noticeable brightness changes can be further minimized by increasing the brightness resolution: the more bits, the more difficult to see the individual (smaller) brightness steps while dimming or brightening a LED. But this has an adverse effect on flicker because this also decreases the LED refresh frequency.
 
-![image](https://github.com/Herwig9820/Justina_interpreter/assets/74488682/82598732-6f96-42e5-979b-1b75cf208d6f)
+Note: increasing timer frequency will reduce flicker only, it plays no role however in creating a smooth dimming experience.
 
+### Transition time
+The time it takes to transition from full brightness to lowest brightness is the LED refresh period times the number of transitions:
 
-# Debugging
-When a program is stopped (either by execution of the ‘stop’ command, by user intervention or by an active breakpoint) debug mode is entered. You can then single step the program, execute statements until the end of a loop, a next breakpoint…
+  **transition time = (2^n - 1 - lowest brightness level) x LED refresh period**
+  **= (2^n - 1 - lowest brightness level) x (2^n - 1) / timer frequency**
 
-Breakpoints can be activated based on a trigger expression or a hit count. You can also include a list of ‘view expressions’ for each breakpoint, and Justina will automatically trace specific variables or even expressions, letting you watch their values change as you single step through the program or a breakpoint is hit.
+### Dimming speed
+If dimming a LED slowly, brightness changes become much more apparent.
 
-![image](https://github.com/Herwig9820/Justina_interpreter/assets/74488682/96a40004-d578-4241-8725-36363f49b295)
+But above a certain (faster) dimming speed, brightness step size is much less critical. For very fast dimming, and depending on the brightness resolution, you can even skip 1, 2, 3... intermediate brightness levels without any noticeable abrupt brightness changes.
 
+Summarizing, to avoid noticeable brightness steps and have a smooth brightness change:
 
-While a procedure is stopped in debug mode, you can also manually review the procedure’s local and static variable contents or view the call stack.
-
-# Integration with c++
-1.	If enabled, system callbacks allow the Arduino program to perform periodic housekeeping tasks beyond the control of Justina (e.g., maintaining a TCP connection, producing a beep when an error is encountered, aborting, or stopping a Justina program...). For that purpose, a set of system flags passes information back and forth between the main Arduino program and Justina at regular intervals (without the need for interrupts).
-2.	Time-critical user routines, functions targeting specific hardware and functions extending Justina functionality in general can be written in c++, given an alias and 'registered' (using a standard mechanism), informing Justina about the minimum and maximum number of arguments and the return type. From then onward, these C++ functions can be called just like any other Justina function, with the same syntax, using the alias as function name and passing scalar or array variables as arguments.
-
-# Arduino c++ examples
-A number of c++ example files, demonstrating how to call Justina, are provided in the repository folder 'examples':
-* Justina_easy: simply call Justina, and that's it
-* Justina_systemCallback: use system callback functions to
-  * ensure that procedures that need to be executed at regular intervals continue to be executed while control is within Justina. In this example: blinking a heartbeat LED
-  * to detect stop, abort, 'console reset' and kill requests (for example when a user presses a 'program abort' pushbutton),...
-  * to set status LEDs reporting the interpreter state (idle, stopped in debug mode, parsing, executing) and indicating whether a user or program error occurred (e.g. to blink a LED)
-and this without the need for Justina to have any knowledge about the hardware (pins, ...) used
-* Justina_userCPP: demonstrates how to write user c++ functions for use in a Justina program (for time critical or specific hardware oriented stuff or to extend built-in Justina functionality...). These c++ functions can then be called from Justina (from the Justina command line or from a Justina program), just like any other Justina function, with the same syntax, using an alias as function name and passing scalar or array variables as arguments
-* Justina_userCPP_lib: demonstrates how to create a Justina user c++ 'library' file. 
-* Justina_OLED: demonstrates how to add additional IO devices for use by Justina (in this example: output only)
-  * using an OLED display with SH1106 controller communicating over software (SW) SPI as additional output device
-  * using an OLED display with SSD1306 controller communicating over I2C as additional input device 
-* Justina_TCPIP: demonstrates various Justina features, namely
-  * setting up a TCP/IP server for use as an additional Justina IO channel
-  * using Justina system callbacks to maintain the TCP/IP connection, blink a heartbeat LED and set status LEDs to indicate the TCP/IP connection state
-  * using Justina user c++ functions to control the TCP/IP connection from within Justina
-
-# Justina language examples
-A few Justina language example files are provided in the repository folder 'extras/Justina_language_examples'. These text files obey the 8.3 file format, to make them compatible with the Arduino SD card file system. Also, they all have the '.jus' extension: opening these files in Notepad++ will automatically invoke Justina language highlighting (if the Justina language extension is installed).
-
-![image](https://github.com/Herwig9820/Justina_interpreter/assets/74488682/f8e80375-9b27-4d3e-8fe0-ad082e6a198b)
-
-The example files are:
-* start.jus: can be used as startup program (if your Arduino is equipped with an SD card board). It sets things like the angle mode, number formatting etc.
-* myFirst.jus: a really simple Justina program
-* fact.jus: a recursive method to calculate factorials
-* input.jus: ask for user input; parse and execute that input within a running program
-* overlap.jus: two method to print lines with overlapping print fields
-* SD_test.jus: perform some basic SD card tests
-* SD_parse.jus: write formatted data to an SD card, read it back and immediately parse this data into variables
-* web_calc.jus: a web server creating a web page giving access to a scientific calculator 
-![image](https://github.com/Herwig9820/Justina_interpreter/assets/74488682/7c0fa15c-bede-4925-8398-661a0ea572b0)
-
-# Documentation
-Full documentation is provided in the repository ' extras' folder. 
+* when dimming slowly, a smaller step size (higher brightness resolution) may be required
+* with a lower brightness resolution, faster dimming may be required
