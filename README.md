@@ -28,6 +28,8 @@ The timer ISR (interrupt service routine) is then responsible for switching the 
 * flicker: the human eye will perceive a movie, a LED brightness, … as flicker-free when the 'refresh rate' of the frames in the movie, or of the waveform switching ON and OFF a LED, … is high enough
 * smooth dimming: especially when the brightness of a LED is increased or decreased slowly, you'll need sufficiently small steps to trick the human eye in creating a perception of smooth dimming
 
+![LED dimming PWM](https://github.com/user-attachments/assets/765413c6-357f-42f4-beb3-0e5ab361e478)
+
 With traditional timer PWM (the PWM waveform is created by the timer hardware) the timer output frequency (PWM frequency) is not critical: as long as it is not below 50 Hz (people with eyes more susceptible to flicker will say 100 Hz and some will even suggest 200 Hz) no flicker will be noticeable. But internally, the PWM signal is constructed by a much higher frequency: the timer input frequency which is derived from the system clock. The ratio between the two clocks will determine the PWM resolution and vice versa.
 
 When creating a PWM signal using interrupts, the timer itself will not produce a PWM waveform; it will trigger ISR calls instead. The ISR will control a counter, maintained in software, to construct the PWM waveform with a much lower frequency than the timer frequency.
