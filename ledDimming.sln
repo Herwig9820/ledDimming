@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.12.35707.178
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ledDimming", "ledDimming\ledDimming.vcxproj", "{697F512E-3D4B-4331-8D42-392BE71724B1}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ledDimming", "ledDimming.vcxproj", "{B1653D60-2BCB-45E4-A309-FA927653742F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,18 +13,18 @@ Global
 		Release|ARM64 = Release|ARM64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{697F512E-3D4B-4331-8D42-392BE71724B1}.Debug|ARM.ActiveCfg = Debug|ARM
-		{697F512E-3D4B-4331-8D42-392BE71724B1}.Debug|ARM.Build.0 = Debug|ARM
-		{697F512E-3D4B-4331-8D42-392BE71724B1}.Debug|ARM.Deploy.0 = Debug|ARM
-		{697F512E-3D4B-4331-8D42-392BE71724B1}.Debug|ARM64.ActiveCfg = Debug|ARM64
-		{697F512E-3D4B-4331-8D42-392BE71724B1}.Debug|ARM64.Build.0 = Debug|ARM64
-		{697F512E-3D4B-4331-8D42-392BE71724B1}.Debug|ARM64.Deploy.0 = Debug|ARM64
-		{697F512E-3D4B-4331-8D42-392BE71724B1}.Release|ARM.ActiveCfg = Release|ARM
-		{697F512E-3D4B-4331-8D42-392BE71724B1}.Release|ARM.Build.0 = Release|ARM
-		{697F512E-3D4B-4331-8D42-392BE71724B1}.Release|ARM.Deploy.0 = Release|ARM
-		{697F512E-3D4B-4331-8D42-392BE71724B1}.Release|ARM64.ActiveCfg = Release|ARM64
-		{697F512E-3D4B-4331-8D42-392BE71724B1}.Release|ARM64.Build.0 = Release|ARM64
-		{697F512E-3D4B-4331-8D42-392BE71724B1}.Release|ARM64.Deploy.0 = Release|ARM64
+		{B1653D60-2BCB-45E4-A309-FA927653742F}.Debug|ARM.ActiveCfg = Debug|ARM
+		{B1653D60-2BCB-45E4-A309-FA927653742F}.Debug|ARM.Build.0 = Debug|ARM
+		{B1653D60-2BCB-45E4-A309-FA927653742F}.Debug|ARM.Deploy.0 = Debug|ARM
+		{B1653D60-2BCB-45E4-A309-FA927653742F}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{B1653D60-2BCB-45E4-A309-FA927653742F}.Debug|ARM64.Build.0 = Debug|ARM64
+		{B1653D60-2BCB-45E4-A309-FA927653742F}.Debug|ARM64.Deploy.0 = Debug|ARM64
+		{B1653D60-2BCB-45E4-A309-FA927653742F}.Release|ARM.ActiveCfg = Release|ARM
+		{B1653D60-2BCB-45E4-A309-FA927653742F}.Release|ARM.Build.0 = Release|ARM
+		{B1653D60-2BCB-45E4-A309-FA927653742F}.Release|ARM.Deploy.0 = Release|ARM
+		{B1653D60-2BCB-45E4-A309-FA927653742F}.Release|ARM64.ActiveCfg = Release|ARM64
+		{B1653D60-2BCB-45E4-A309-FA927653742F}.Release|ARM64.Build.0 = Release|ARM64
+		{B1653D60-2BCB-45E4-A309-FA927653742F}.Release|ARM64.Deploy.0 = Release|ARM64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
