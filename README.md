@@ -5,14 +5,14 @@
 The objective of this small project is to demonstrate how a single Arduino timer can be used to control the brightness of multiple LEDs and obtain smooth dimming.
 An interrupt service routine (ISR) called at fixed time intervals will create 'multi-pulse trains' instead of traditional single-pulse PWM (Pulse Width Modulation) waveforms, reducing or even eliminating flicker drastically with a timer frequency that can be (much) lower than with PWM. This reduces processor time spent in the interrupt service routine considerably.
 
-![mega2560_rgb](https://github.com/user-attachments/assets/bf9e4c30-b193-4261-aed6-a050469a6ac4)
-
 To try this out yourself, you'll need 
 * A small breadboard
-* Arduino Mega2560 (this figure) or Arduino UNO (and with slight code adaptations, any Arduino)
+* Arduino Mega2560 (figure below) or Arduino UNO (and with slight code adaptations, any Arduino)
 * three LEDs (in this demo, 3 LEDs: red, green and blue)
 * three 330 Ohm resistors (for 5 Volt Arduino's)
 * wires
+
+![mega2560_rgb](https://github.com/user-attachments/assets/bf9e4c30-b193-4261-aed6-a050469a6ac4)
 
 Connect each of the 3 LED anodes, in series with a resistor, to one of the 3 designated Arduino output pins:
 Arduino UNO: pins D2, D3 and D4
