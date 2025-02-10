@@ -1,4 +1,4 @@
-# Dim Multiple Analog LEDs Efficiently With Only One Timer, Using Bresenham's Line Algorithm instead of PWM
+# Dim Multiple Analog LEDs Efficiently With Only One Arduino Timer, Using Bresenham's Line Algorithm instead of PWM
 
 ![uno_rgb](https://github.com/user-attachments/assets/fda7d0e5-87f4-4eff-90d0-e3861daa5a1c)
 
