@@ -94,15 +94,18 @@ However, in both cases:
 
 **(technical) LED refresh frequency = timer frequency / (2^n - 1)**
 
-# Low Brightness Levels
+# 5 Low Brightness Levels
 
 ### Perceived LED refresh frequency
 Let's define the perceived LED frequency as the frequency determining whether there will be noticeable flicker. Its name stems from the fact that, for very low LED refresh frequencies, this is the frequency at which you would 'see' the individual pulses appear.
 
 For PWM, LED refresh frequency and perceived LED refresh frequency are equal.
 
-With Bresenham's line algorithm, the 'perceived' LED refresh frequency (directly leading to flicker if too large) depends on the brightness level. The perceived LED refresh frequency:
+With Bresenham's line algorithm, the 'perceived' LED refresh frequency (directly leading to flicker if too large) depends on the brightness level. 
 
+![scope brightness 8-511](https://github.com/user-attachments/assets/80f8f53f-ebef-4d8f-9a8c-462694aca58a)
+
+The perceived LED refresh frequency:
 * equals the LED refresh frequency for brightness levels 1 and 2^n - 2, because there's only 1 'LED ON' or 'LED OFF' pulse to distribute (same as PWM)
 * is doubled for brightness level 2 and 2^n - 3, because 2 'LED ON' or 'LED OFF' pulses are now distributed.
 * approaches a maximum for a brightness level approaching half the number of brightness levels (many pulses to distribute)
@@ -119,12 +122,13 @@ Using PWM, you would need a timer output and associated ISR execution around 30 
 
 
 ### Excel tool
-The gitHub repository for this project contains a useful Excel file, allowing to calculate:
+The [gitHub repository **extras** folder]() for this project contains a useful Excel file, allowing to calculate:
 
 * required settings (timer output frequency and lowest brightness level) in function of selected brightness resolution (bits), minimum lowest brightness (%) and minimum acceptable 'perceived' LED refresh frequency for lowest brightness
 * lowest brightness (percentage) and 'perceived' LED refresh frequency frequency for lowest brightness in function of settings (timer output frequency, lowest brightness level and brightness resolution)
 See the examples in the second figure above.
 
+![calculation](https://github.com/user-attachments/assets/cf7065a0-9aad-47ff-963d-b71301946c96)
 
 ### Note
 Flicker is easiest to see in darker ambient conditions. Rapid eye movements can reveal flicker even at higher rates. So you will have to experiment a little.
