@@ -19,10 +19,11 @@ Arduino UNO: pins D2, D3 and D4
 Arduino Mega2560: digital pins D64, D55 and D66 (labeled as A10, A11 and A12, because they can also be used as analog pin).
 Connect the 3 LED cathodes to the Arduino ground pin. That's it !
 
-# PWM and When Not to Use It
+# 1 PWM And When Not To Use It
 
 If you only need to control brightness on a couple of LEDs, timer PWM is the preferred method.
 But what if you have, let's say, 8 LEDs that need to be dimmed (if you have enough output pins available, of course) ? First of all, you won't have enough timer PWM outputs and second, even if you would, it would probably be bad design practice to sacrifice all these timers for that purpose.
+
 Luckily enough, there's another approach - one that needs only one timer, producing a timer interrupt at fixed time intervals.
 The timer ISR (interrupt service routine) is then responsible for switching the LEDs ON and OFF, creating waveforms with the required duty cycles to obtain smooth dimming without noticeable flicker as perceived by the human eye.
 * flicker: the human eye will perceive a movie, a LED brightness, … as flicker-free when the 'refresh rate' of the frames in the movie, or of the waveform switching ON and OFF a LED, … is high enough
@@ -41,7 +42,7 @@ Do you see the problem ? Even if an Arduino UNO or Mega2560 would be capable eno
 But there's another way that will prove to be useful in most cases: use Bresenham's line algorithm to create waveforms consisting not of a single pulse (PWM) but of a 'pulse train'. With a timer frequency that is much lower (3200 Hz or even lower), more or less the same result can be obtained while processor loads will be reduced.
 And the nice thing is: you can even 'reuse' a timer already used for another purpose - as long as it is working with a fixed timer frequency within an acceptable range.
 
-# Bresenham's Line Algorithm
+# 2 Bresenham's Line Algorithm
 
 Bresenham's Line Algorithm ? Sounds complicated, but it isn't !
 This simple algorithm was first introduced by Mr. Bresenham, back in 1962, to draw an approximation for a line in a pixel matrix, using efficient integer arithmetic only. In the figure attached, a line (in this example: through the origin) with slope = 7/11 is shown. Underneath, the y-coordinates are shown for each x-value.
@@ -49,6 +50,9 @@ This simple algorithm was first introduced by Mr. Bresenham, back in 1962, to dr
 Of course one could calculate all these y-coordinates, round them to obtain integer values and use these values to select the pixels to switch 'ON' to draw the best line approximation.
 
 But we'll perform a very simple calculation instead: Bresenham's Line Algorithm (please refer to the figure). And we'll even simplify it a little because we won't bother about rounding - that will be irrelevant once we move to LED dimming.
+
+![Bresenham's line algorithm](https://github.com/user-attachments/assets/e96e7f3a-d476-4e80-b2a6-710f6c340f7b)
+
 * Starting with the number 0 (for x-coordinate 0), we add 7 (slope nominator), divide that by 11 (slope denominator) and use the remainder as result (modulo operation).
 * Then the same calculation is applied for x-coordinates 1, 2... to 11, each time using the previous result us input.
 * This results in the following sequence: 0, 7, 3, 10, 6, 2, 9, 5, 1, 8, 4, 0 (see bottom of the picture).
@@ -119,7 +123,7 @@ See the examples in the second figure above.
 ### Note
 Flicker is easiest to see in darker ambient conditions. Rapid eye movements can reveal flicker even at higher rates. So you will have to experiment a little.
 
-# 7 Finally: Dimming Speed
+# 7 To Conclude, A Note About Dimming Speed
 
 The human eye is not only sensitive to flicker but also to abrupt brightness changes (e.g., while dimming a LED). Just as with flicker, this is especially true in low brightness conditions. But this means that, if you use Bresenham's line algorithm and set a minimum brightness level, you'll avoid (or minimize) not only flicker but also the most noticeable brightness level changes, coming closer to a perception of continuous, smooth dimming without flicker !
 
