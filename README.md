@@ -110,7 +110,7 @@ The perceived LED refresh frequency:
 * is doubled for brightness level 2 and 2^n - 3, because 2 'LED ON' or 'LED OFF' pulses are now distributed.
 * approaches a maximum for a brightness level approaching half the number of brightness levels (many pulses to distribute)
 
-So the perceived refresh frequency is lowest for very low and for very high brightness levels. But you only need to worry about the lowest brightness levels because the human eye is more sensitive to flicker (and brightness changes) at those levels.
+So the perceived refresh frequency is lowest for very low and for very high brightness levels. But you only need to worry about the lowest brightness levels because the human eye is much more sensitive to flicker (and brightness changes) at those levels.
 
 The solution is straightforward: don't use these (very) low brightness levels and you'll be able to lower the timer output frequency considerably.
 
@@ -187,7 +187,7 @@ volatile bool initValues{ true }; // program init status
 ```
 
 ## Setup() procedure
-Checks for a valid board type (UNO or Mega2560) and initializes output pins accordingly (the Arduino Mega2560 uses other output pins than the UNO) .
+Checks for a valid board type (UNO or Mega2560) and initializes the output pins accordingly. The Arduino Mega2560 uses other output pins than the UNO.
 ```
 #if defined (ARDUINO_AVR_UNO)
 constexpr int redLedPin = 2;
