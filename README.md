@@ -122,7 +122,7 @@ Using PWM, you would need a timer output and associated ISR execution around 30 
 
 
 ### Excel tool
-The [gitHub repository **extras** folder]() for this project contains a useful Excel file, allowing to calculate:
+The [gitHub repository **extras** folder](https://github.com/Herwig9820/ledDimming/tree/master/extras) for this project contains a useful Excel file, allowing to calculate:
 
 * required settings (timer output frequency and lowest brightness level) in function of selected brightness resolution (bits), minimum lowest brightness (%) and minimum acceptable 'perceived' LED refresh frequency for lowest brightness
 * lowest brightness (percentage) and 'perceived' LED refresh frequency frequency for lowest brightness in function of settings (timer output frequency, lowest brightness level and brightness resolution)
