@@ -133,6 +133,146 @@ See the examples in the second figure above.
 ### Note
 Flicker is easiest to see in darker ambient conditions. Rapid eye movements can reveal flicker even at higher rates. So you will have to experiment a little.
 
+
+
+
+# 6 The Example Program
+
+The [GitHub repository main folder](https://github.com/Herwig9820/ledDimming) contains an example program, ledDimming.ino, for Arduino UNO and Arduino Mega2560. It demonstrates the use of Bresenham's algorithm to control LED brightness as introduced in previous steps. It is suggested to load the program now in the Arduino IDE and connect the three LEDs as explained in the introduction.
+The program (containing detailed comments) continuously dims 3 LEDs and then increases brightness again.
+A few key sections are highlighted below.
+
+### Preprocessor constant
+Allows you to compile using Bresenham's line algorithm or traditional single-pulse PWM.
+```
+#define BRESENHAM_ALGORITHM 1; // 0 = single-pulse PWM, 1 = Bresenham's line algorithm
+```
+The remainder of this document focuses on Bresenham's algorithm.
+
+### User changeable parameters
+The first parameter defines the common timebase for the waveforms produced:
+* Timer T1: frequency, in Hertz
+The next two parameters are defined for each LED separately:
+* Brightness resolution (brightness step count): bit count to store brightness (n bits: 2^n brightness levels)
+* Lowest brightness level with no (or minimal) flicker
+```
+constexpr long timer1Frequency{ 3200L }; // Hertz
+constexpr uint16_t brightness_bits[3]{ 5, 7, 9 }; // #bits
+constexpr uint16_t lowestBrightnessMinimalFlicker[3]{ 0, 2, 8 }; // lowest brightness
+```
+**LED refresh frequency:**
+* first LED: 32 brightness levels (2^5). LED refresh frequency is 3200 / (32-1) = 103.2 Hz (refresh period = 9.7 ms)
+* second LED: 128 brightness levels. LED refresh frequency = 3200 / (128-1) = 25.2 Hz (refresh period = 39.7 ms)
+* last LED: 512 brightness levels. LED refresh frequency = 3200 / (512-1) = 6.3 Hz (LED refresh period = 159 ms)
+
+**'Perceived' LED refresh frequency** at lowest brightness = LED refresh frequency / lowest brightness level:
+* first LED: 103.2 Hz (@ brightness level 1)
+* second LED: 25.2 Hz x 2 = 50.4 Hz (@ brightness level 2)
+* third LED: 6.3 Hz x 8 = 50.1 Hz (@ brightness level 8)
+
+**Lowest brightness as percentage of maximum brightness:**
+* first LED: 1 / (32 - 1) = 3.23%
+* second LED: 2 / (128-1) = 1.57%
+* third LED: 8 / (512-1) = 1.57%
+At this brightness level, thanks to Bresenham's algorithm, noticeable flicker will not occur or be minimal (depending on ambient lighting, eye sensitivity etc.)
+
+### Global variables
+These variables are declared as volatile because they take care of data exchange between main program and Timer T1 interrupt service routine (ISR).
+```
+volatile uint16_t brightness[3]{ 0, 0, 0 }; // brightness level
+volatile uint32_t pulseTrainCount[3]{ 0, 0, 0 }; // completed LED refresh cycles count
+volatile bool initValues{ true }; // program init status
+```
+
+## Setup() procedure
+Checks for a valid board type (UNO or Mega2560) and initializes output pins accordingly (the Arduino Mega2560 uses other output pins than the UNO) .
+```
+#if defined (ARDUINO_AVR_UNO)
+constexpr int redLedPin = 2;
+#elif defined(ARDUINO_AVR_MEGA2560)
+constexpr int redLedPin = 64;
+#else
+#error "This program is intended for the Arduino Uno or Mega only. Check your board type";
+#endif
+
+constexpr int greenLedPin{ redLedPin + 1 }, blueLedPin{ redLedPin + 2 };
+pinMode(redLedPin, OUTPUT);
+pinMode(greenLedPin, OUTPUT);
+pinMode(blueLedPin, OUTPUT);
+```
+This procedure also sets up timer T1 to run at the frequency set earlier and to generate an interrupt with that frequency.
+
+
+## Procedure loop()
+This procedure is only concerned with dimming / brightening the LEDs. It does that in continuous cycles, based on
+* the user changeable parameters discussed above
+* the dimming speed defined here (separately for each LED)
+
+### Dimming speed
+Control dimming speed using one of these options:
+* To use time to decide on brightness changes, test variables 'currentTime' and lastTime[index] ('index' referring to LEDs 0 to 2). Use this if the dimming speed is much lower than the LED refresh frequency.\
+**Example:** brightness of second LED is changed one step every 500 ms, which is much larger than the LED refresh period (159 ms - see above).
+* To synchronize brightness changes with a number of LED refresh periods, test variables 'currentCount[index]' and 'lastCount[index]'. Use this if the dimming speed is equal (or only a factor 2, 3, ...) lower than the LED refresh frequency.\
+**Example:** brightness of first LED is changed one step every 19.4 ms (2 x 9.7 ms - see above)\
+**Example:** brightness of the last LED is changed one step every 159 ms (see above)
+
+Brightness changes are always applied in between two LED refresh cycles to prevent visual disturbances.
+```
+changeBrightnessNow[0] = (currentCount[0] > lastCount[0] + 1);
+changeBrightnessNow[1] = (currentTime > lastTime[1] + 499);
+changeBrightnessNow[2] = (currentCount[2] > lastCount[2]);
+```
+
+### Gamma correction
+The human eye is much more sensitive in 'low light' conditions - that's an evolutionary thing. So the relation between LED brightness level and our brightness sensation is not linear. The correction applied is called gamma correction, introducing a non-linearity to compensate the non-linearity of the human eye. 
+
+Typically this correction takes the form brightness ^ 2.2 (brightness expressed as a number between 0 and 1).
+
+But a very nice approximation for Arduino UNO or MEGA2560 boards (which are better in integer calculations than in floating point calculations) is simply multiplying the brightness level with the brightness level + 1 and scaling it back to the range from 0 to 2^n - 1.
+```
+uint16_t br = max(((uint32_t)(pulsesON_0_n[index]) * (pulsesON_0_n[index] + 1)) >>
+brightness_bits[index], lowestBrightnessMinimalFlicker[index]);
+```
+
+## Interrupt Service Routine (ISR)
+The ISR runs at the frequency set for timer T1.
+It does only one thing: generate a waveform to set the brightness of a LED without noticeable flicker (if the correct settings are applied, of course). It does that by deciding, each time it runs, whether the LED should be ON or OFF during the next timer period.
+
+**Start of a new LED refresh period**
+
+If at the start of a new LED refresh cycle, load the LED brightness as set by the main program during the last LED refresh period, and add 1 to the counter of completed LED refresh cycles.
+```
+if (progress[index] == 0) { ledBrightness[index] = brightness[index];
+pulseTrainCount[index]++; }
+++progress[index] %= brightnessLevelLedON[index]; // progress within LED refresh cycle
+```
+**LED OFF**
+
+If brightness level is 0 (LED is OFF), move to next LED
+```
+if (ledBrightness[index] == 0) { ledBit <<= 1; continue; } // LED OFF ? move to next LED
+```
+
+### Bresenham's line algorithm
+Applied when brightness level is not 0 (LED is currently not OFF).\
+At the start of a new LED refresh cycle ('if()' clause), the LED is always switched ON during the next timer T1 period.\
+Note that if maximum brightness is set, the step counter remains zero and the 'if()' clause is the only clause to be executed during ISR calls within the LED refresh period.\
+The 'else' clause implements Bresenham's algorithm as explained earlier.
+```
+if (stepCounter[index] == 0) {
+ledStateBits |= ledBit;
+stepCounter[index] = (ledBrightness[index] == brightnessLevelLedON[index]) ? 0 :
+ledBrightness[index];
+}
+else {
+uint16_t newStep = (stepCounter[index] + ledBrightness[index]) %
+brightnessLevelLedON[index];
+if ((newStep < stepCounter[index]) && (newStep != 0)) { ledStateBits |= ledBit; }
+stepCounter[index] = newStep;
+}
+ledBit <<= 1;
+```
+
 # 7 To Conclude, A Note About Dimming Speed
 
 The human eye is not only sensitive to flicker but also to abrupt brightness changes (e.g., while dimming a LED). Just as with flicker, this is especially true in low brightness conditions. But this means that, if you use Bresenham's line algorithm and set a minimum brightness level, you'll avoid (or minimize) not only flicker but also the most noticeable brightness level changes, coming closer to a perception of continuous, smooth dimming without flicker !
