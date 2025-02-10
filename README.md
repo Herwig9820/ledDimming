@@ -7,7 +7,7 @@ An interrupt service routine (ISR) called at fixed time intervals will create 'm
 
 To try this out yourself, you'll need 
 * A small breadboard
-* Arduino Mega2560 (figure below) or Arduino UNO (and with slight code adaptations, any Arduino)
+* Arduino UNO, Arduino Mega2560 (figure below), or other Arduino boards (with slight code adaptations).
 * three LEDs (in this demo, 3 LEDs: red, green and blue)
 * three 330 Ohm resistors (for 5 Volt Arduino's)
 * wires
@@ -24,10 +24,10 @@ Connect the 3 LED cathodes to the Arduino ground pin. That's it !
 If you only need to control brightness on a couple of LEDs, timer PWM is the preferred method.
 But what if you have, let's say, 8 LEDs that need to be dimmed (if you have enough output pins available, of course) ? First of all, you won't have enough timer PWM outputs and second, even if you would, it would probably be bad design practice to sacrifice all these timers for that purpose.
 
-Luckily enough, there's another approach - one that needs only one timer, producing a timer interrupt at fixed time intervals.
+Fortunately, there's another approach - one that needs only one timer, producing a timer interrupt at fixed time intervals.
 The timer ISR (interrupt service routine) is then responsible for switching the LEDs ON and OFF, creating waveforms with the required duty cycles to obtain smooth dimming without noticeable flicker as perceived by the human eye.
-* flicker: the human eye will perceive a movie, a LED brightness, … as flicker-free when the 'refresh rate' of the frames in the movie, or of the waveform switching ON and OFF a LED, … is high enough
-* smooth dimming: especially when the brightness of a LED is increased or decreased slowly, you'll need sufficiently small steps to trick the human eye in creating a perception of smooth dimming
+* flicker: the human eye will perceive a movie, an LED brightness, … as flicker-free when the 'refresh rate' of the frames in the movie, or of the waveform switching ON and OFF a LED, … is high enough
+* smooth dimming: especially when the brightness of an LED is increased or decreased slowly, you'll need sufficiently small steps to trick the human eye in creating a perception of smooth dimming
 
 ![LED dimming PWM](https://github.com/user-attachments/assets/765413c6-357f-42f4-beb3-0e5ab361e478)
 
@@ -57,7 +57,7 @@ But we'll perform a very simple calculation instead: Bresenham's Line Algorithm 
 * Then the same calculation is applied for x-coordinates 1, 2... to 11, each time using the previous result us input.
 * This results in the following sequence: 0, 7, 3, 10, 6, 2, 9, 5, 1, 8, 4, 0 (see bottom of the picture).
 * Each time a calculated number is smaller than the previous one, the y-coordinate increments by 1: we now have identified all pixels being part of the line approximation (the pixels colored green in the picture) !
-Not only this calculation is straightforward, it uses integer arithmetic only (instead of much slower floating point operations). For each calculation step, only the previous step result is needed - no need to store the complete sequence of results.
+This calculation is not only straightforward but also uses only integer arithmetic (instead of much slower floating point operations). For each calculation step, only the previous step result is needed - no need to store the complete sequence of results.
 
 # 3 LED Dimming With Bresenham's Line Algorithm
 
@@ -67,7 +67,7 @@ But what's the link between a grid of pixels and a simple LED ?
 
 ![Bresenham vs PWM](https://github.com/user-attachments/assets/4b8fcaae-3fa0-447a-a60f-dd22e6acf321)
 
-Imagine a LED with 12 (not 11) brightness levels (0 = OFF, 11 = fully ON) and a desired brightness level 7. So, again, 7/11: within 11 consecutive ISR calls, the LED needs to be switched ON 7 times and switched OFF 4 times. And what's more, to prevent flicker, the 7 ON-pulses must be spread as evenly as possible over the 11 timer periods.
+Imagine an LED with 12 (not 11) brightness levels (0 = OFF, 11 = fully ON) and a desired brightness level 7. So, again, 7/11: within 11 consecutive ISR calls, the LED needs to be switched ON 7 times and switched OFF 4 times. And what's more, to prevent flicker, the 7 ON-pulses must be spread as evenly as possible over the 11 timer periods.
 
 Ring a bell ? Yes, Bresenham's Line Algorithm ! Please refer to the figure above for a comparison with PWM, always for brightness level 7/11. It's easy to see that, for a same timer frequency, the 'perceived' LED refresh time is smaller.
 
@@ -75,7 +75,7 @@ In reality, for some applications we'll probably want more brightness levels (sm
 
 # 4 Bresenham's Line Algorithm Versus PWM
 
-The figure below is a capture of both a PWM waveform and a multi-pulse (Bresenham's line algorithm) waveform, each driving a LED with 128 brightness levels (0 = OFF, 127 = fully ON) and with a set brightness of 21/127. The timer frequency is 3000 Hz.
+The figure below is a capture of both a PWM waveform and a multi-pulse (Bresenham's line algorithm) waveform, each driving an LED with 128 brightness levels (0 = OFF, 127 = fully ON) and with a set brightness of 21/127. The timer frequency is 3000 Hz.
 
 ![scope brightness 21-127](https://github.com/user-attachments/assets/d228408e-33b4-4121-9a70-faa9a61787c1)
 
@@ -109,7 +109,10 @@ The perceived LED refresh frequency:
 * equals the LED refresh frequency for brightness levels 1 and 2^n - 2, because there's only 1 'LED ON' or 'LED OFF' pulse to distribute (same as PWM)
 * is doubled for brightness level 2 and 2^n - 3, because 2 'LED ON' or 'LED OFF' pulses are now distributed.
 * approaches a maximum for a brightness level approaching half the number of brightness levels (many pulses to distribute)
-So the perceived refresh frequency is lowest for very low and for very high brightness levels. But you really need to worry only about the lowest brightness levels, because the sensitivity of the human eye for flicker (and for brightness changes) is much higher there. The solution is straightforward: don't use these (very) low brightness levels and you'll be able to lower the timer output frequency considerably.
+
+So the perceived refresh frequency is lowest for very low and for very high brightness levels. But you only need to worry about the lowest brightness levels because the human eye is more sensitive to flicker (and brightness changes) at those levels.
+
+The solution is straightforward: don't use these (very) low brightness levels and you'll be able to lower the timer output frequency considerably.
 
 For low brightness levels ( brightness level < 2^n / 2):
 
@@ -122,7 +125,7 @@ Using PWM, you would need a timer output and associated ISR execution around 30 
 
 
 ### Excel tool
-The [gitHub repository **extras** folder](https://github.com/Herwig9820/ledDimming/tree/master/extras) for this project contains a useful Excel file, allowing to calculate:
+The [`extras`](https://github.com/Herwig9820/ledDimming/tree/master/extras) folder in the GitHub repository contains a useful Excel file for calculating:
 
 * required settings (timer output frequency and lowest brightness level) in function of selected brightness resolution (bits), minimum lowest brightness (%) and minimum acceptable 'perceived' LED refresh frequency for lowest brightness
 * lowest brightness (percentage) and 'perceived' LED refresh frequency frequency for lowest brightness in function of settings (timer output frequency, lowest brightness level and brightness resolution)
@@ -176,7 +179,7 @@ constexpr uint16_t lowestBrightnessMinimalFlicker[3]{ 0, 2, 8 }; // lowest brigh
 At this brightness level, thanks to Bresenham's algorithm, noticeable flicker will not occur or be minimal (depending on ambient lighting, eye sensitivity etc.)
 
 ### Global variables
-These variables are declared as volatile because they take care of data exchange between main program and Timer T1 interrupt service routine (ISR).
+These variables are declared as volatile because they facilitate data exchange between main program and Timer T1 interrupt service routine (ISR).
 ```
 volatile uint16_t brightness[3]{ 0, 0, 0 }; // brightness level
 volatile uint32_t pulseTrainCount[3]{ 0, 0, 0 }; // completed LED refresh cycles count
@@ -235,7 +238,7 @@ brightness_bits[index], lowestBrightnessMinimalFlicker[index]);
 
 ## Interrupt Service Routine (ISR)
 The ISR runs at the frequency set for timer T1.
-It does only one thing: generate a waveform to set the brightness of a LED without noticeable flicker (if the correct settings are applied, of course). It does that by deciding, each time it runs, whether the LED should be ON or OFF during the next timer period.
+It does only one thing: generate a waveform to set the brightness of an LED without noticeable flicker (if the correct settings are applied, of course). It does that by deciding, each time it runs, whether the LED should be ON or OFF during the next timer period.
 
 **Start of a new LED refresh period**
 
@@ -287,7 +290,7 @@ The time it takes to transition from full brightness to lowest brightness is the
   **= (2^n - 1 - lowest brightness level) x (2^n - 1) / timer frequency**
 
 ### Dimming speed
-If dimming a LED slowly, brightness changes become much more apparent.
+If dimming an LED slowly, brightness changes become much more apparent.
 
 But above a certain (faster) dimming speed, brightness step size is much less critical. For very fast dimming, and depending on the brightness resolution, you can even skip 1, 2, 3... intermediate brightness levels without any noticeable abrupt brightness changes.
 
