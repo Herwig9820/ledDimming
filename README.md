@@ -53,7 +53,7 @@ But we'll perform a very simple calculation instead: Bresenham's Line Algorithm 
 
 ![Bresenham's line algorithm](https://github.com/user-attachments/assets/e96e7f3a-d476-4e80-b2a6-710f6c340f7b)
 
-* Starting with the number 0 (for x-coordinate 0), we add 7 (slope nominator), divide that by 11 (slope denominator) and use the remainder as result (modulo operation).
+* Starting with the number 0 (for x-coordinate 0), we add 7 (slope numerator), divide that by 11 (slope denominator) and use the remainder as result (modulo operation).
 * Then the same calculation is applied for x-coordinates 1, 2... to 11, each time using the previous result us input.
 * This results in the following sequence: 0, 7, 3, 10, 6, 2, 9, 5, 1, 8, 4, 0 (see bottom of the picture).
 * Each time a calculated number is smaller than the previous one, the y-coordinate increments by 1: we now have identified all pixels being part of the line approximation (the pixels colored green in the picture) !
