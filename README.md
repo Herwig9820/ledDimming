@@ -59,11 +59,13 @@ But we'll perform a very simple calculation instead: Bresenham's Line Algorithm 
 * Each time a calculated number is smaller than the previous one, the y-coordinate increments by 1: we now have identified all pixels being part of the line approximation (the pixels colored green in the picture) !
 Not only this calculation is straightforward, it uses integer arithmetic only (instead of much slower floating point operations). For each calculation step, only the previous step result is needed - no need to store the complete sequence of results.
 
-# LED Dimming With Bresenham's Line Algorithm
+# 3 LED Dimming With Bresenham's Line Algorithm
 
 So, to draw an approximation for a line with slope 7/11 in a pixel grid, the y-coordinate needs to be incremented 7 times while the x-coordinate is incremented 11 times and y-coordinate increments should be distributed as evenly as possible.
 
 But what's the link between a grid of pixels and a simple LED ?
+
+![Bresenham vs PWM](https://github.com/user-attachments/assets/4b8fcaae-3fa0-447a-a60f-dd22e6acf321)
 
 Imagine a LED with 12 (not 11) brightness levels (0 = OFF, 11 = fully ON) and a desired brightness level 7. So, again, 7/11: within 11 consecutive ISR calls, the LED needs to be switched ON 7 times and switched OFF 4 times. And what's more, to prevent flicker, the 7 ON-pulses must be spread as evenly as possible over the 11 timer periods.
 
@@ -71,22 +73,26 @@ Ring a bell ? Yes, Bresenham's Line Algorithm ! Please refer to the figure for a
 
 In reality, for some applications we'll probably want more brightness levels (smaller brightness steps means smoother dimming) - but that doesn't change the algorithm.
 
-# Bresenham's Line Algorithm Versus PWM
+# 4 Bresenham's Line Algorithm Versus PWM
 
-The screenshot (see figure) is a capture of both a PWM waveform and a multi-pulse (Bresenham's line algorithm) waveform, each driving a LED with 128 brightness levels (0 = OFF, 127 = fully ON) and with a set brightness of 21/127. The timer frequency is 3000 Hz.
+The figure is a capture of both a PWM waveform and a multi-pulse (Bresenham's line algorithm) waveform, each driving a LED with 128 brightness levels (0 = OFF, 127 = fully ON) and with a set brightness of 21/127. The timer frequency is 3000 Hz.
+
+![scope brightness 21-127](https://github.com/user-attachments/assets/d228408e-33b4-4121-9a70-faa9a61787c1)
+
 The LED refresh period is 127 x (1/3000) = 42.33 milliseconds (refresh frequency 23.62 Hz), which is too long for the human eye to perceive a stable LED brightness using PWM. In fact, using PWM any LED brightness other than fully ON or OFF will produce huge flicker with a timer frequency of 3000 Hz.
+
 But using Bresenham's line algorithm, the required ON time is distributed over the complete LED refresh period, creating a number of evenly distributed pulses (pulse train) equal to the set brightness (in the example: 21 pulses). This decreases the 'perceived' refresh period considerably (in the example: to 42.33 / 21 = 2 milliseconds (500 Hz) preventing flicker from occurring).
 
 ### LED refresh frequency
 
 Whether the software-created waveform is created with PWM or Bresenham's line algorithm: with an n-bit brightness resolution, one 'technical' LED refresh period consists of 2^n-1 timer periods and the number of LED brightness levels is 2^n.
-level 0 means LED OFF during 2^n - 1 timer periods
+* level 0 means LED OFF during 2^n - 1 timer periods
 * level 2^n - 1 means LED ON during 2^n - 1 timer periods
-* As we have seen, Bresenham's algorithm nicely distributes ON pulses where PWM doesn't.
 
+As we have seen, Bresenham's algorithm nicely distributes ON pulses where PWM doesn't.
 However, in both cases:
 
-  **(technical) LED refresh frequency = timer frequency / (2^n - 1)**
+**(technical) LED refresh frequency = timer frequency / (2^n - 1)**
 
 # Low Brightness Levels
 
