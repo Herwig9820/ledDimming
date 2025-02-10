@@ -45,11 +45,11 @@ And the nice thing is: you can even 'reuse' a timer already used for another pur
 # 2 Bresenham's Line Algorithm
 
 Bresenham's Line Algorithm ? Sounds complicated, but it isn't !
-This simple algorithm was first introduced by Mr. Bresenham, back in 1962, to draw an approximation for a line in a pixel matrix, using efficient integer arithmetic only. In the figure attached, a line (in this example: through the origin) with slope = 7/11 is shown. Underneath, the y-coordinates are shown for each x-value.
+This simple algorithm was first introduced by Mr. Bresenham, back in 1962, to draw an approximation for a line in a pixel matrix, using efficient integer arithmetic only. In the figure below, a line (in this example: through the origin) with slope = 7/11 is shown. Underneath, the y-coordinates are shown for each x-value.
 
 Of course one could calculate all these y-coordinates, round them to obtain integer values and use these values to select the pixels to switch 'ON' to draw the best line approximation.
 
-But we'll perform a very simple calculation instead: Bresenham's Line Algorithm (please refer to the figure). And we'll even simplify it a little because we won't bother about rounding - that will be irrelevant once we move to LED dimming.
+But we'll perform a very simple calculation instead: Bresenham's Line Algorithm (please refer to the figure below). And we'll even simplify it a little because we won't bother about rounding - that will be irrelevant once we move to LED dimming.
 
 ![Bresenham's line algorithm](https://github.com/user-attachments/assets/e96e7f3a-d476-4e80-b2a6-710f6c340f7b)
 
@@ -69,13 +69,13 @@ But what's the link between a grid of pixels and a simple LED ?
 
 Imagine a LED with 12 (not 11) brightness levels (0 = OFF, 11 = fully ON) and a desired brightness level 7. So, again, 7/11: within 11 consecutive ISR calls, the LED needs to be switched ON 7 times and switched OFF 4 times. And what's more, to prevent flicker, the 7 ON-pulses must be spread as evenly as possible over the 11 timer periods.
 
-Ring a bell ? Yes, Bresenham's Line Algorithm ! Please refer to the figure for a comparison with PWM, always for brightness level 7/11. It's easy to see that, for a same timer frequency, the 'perceived' LED refresh time is smaller.
+Ring a bell ? Yes, Bresenham's Line Algorithm ! Please refer to the figure above for a comparison with PWM, always for brightness level 7/11. It's easy to see that, for a same timer frequency, the 'perceived' LED refresh time is smaller.
 
 In reality, for some applications we'll probably want more brightness levels (smaller brightness steps means smoother dimming) - but that doesn't change the algorithm.
 
 # 4 Bresenham's Line Algorithm Versus PWM
 
-The figure is a capture of both a PWM waveform and a multi-pulse (Bresenham's line algorithm) waveform, each driving a LED with 128 brightness levels (0 = OFF, 127 = fully ON) and with a set brightness of 21/127. The timer frequency is 3000 Hz.
+The figure below is a capture of both a PWM waveform and a multi-pulse (Bresenham's line algorithm) waveform, each driving a LED with 128 brightness levels (0 = OFF, 127 = fully ON) and with a set brightness of 21/127. The timer frequency is 3000 Hz.
 
 ![scope brightness 21-127](https://github.com/user-attachments/assets/d228408e-33b4-4121-9a70-faa9a61787c1)
 
@@ -116,7 +116,7 @@ For low brightness levels ( brightness level < 2^n / 2):
   **Perceived LED refresh frequency = LED frequency x brightness level**
   **= timer frequency / (2^n - 1) x brightness level**
 
-As shown in the first figure (above), with a timer frequency of 3200 Hz and 512 brightness levels, setting a minimum brightness level 8 (1.57% of maximum brightness) will get rid of all, or most, low-brightness flicker (all depends on ambient lighting, eye sensitivity etc.). If flicker is still noticeable, increase minimum brightness with 1 or 2 steps. Or increase timer frequency a little.
+As shown in the figure (above), with a timer frequency of 3200 Hz and 512 brightness levels, setting a minimum brightness level 8 (1.57% of maximum brightness) will get rid of all, or most, low-brightness flicker (all depends on ambient lighting, eye sensitivity etc.). If flicker is still noticeable, increase minimum brightness with 1 or 2 steps. Or increase timer frequency a little.
 
 Using PWM, you would need a timer output and associated ISR execution around 30 kHz - either impossible or a waste of processor time.
 
@@ -126,20 +126,19 @@ The [gitHub repository **extras** folder](https://github.com/Herwig9820/ledDimmi
 
 * required settings (timer output frequency and lowest brightness level) in function of selected brightness resolution (bits), minimum lowest brightness (%) and minimum acceptable 'perceived' LED refresh frequency for lowest brightness
 * lowest brightness (percentage) and 'perceived' LED refresh frequency frequency for lowest brightness in function of settings (timer output frequency, lowest brightness level and brightness resolution)
-See the examples in the second figure above.
+See the examples:
 
 ![calculation](https://github.com/user-attachments/assets/cf7065a0-9aad-47ff-963d-b71301946c96)
 
 ### Note
 Flicker is easiest to see in darker ambient conditions. Rapid eye movements can reveal flicker even at higher rates. So you will have to experiment a little.
 
-
-
-
 # 6 The Example Program
 
 The [GitHub repository main folder](https://github.com/Herwig9820/ledDimming) contains an example program, ledDimming.ino, for Arduino UNO and Arduino Mega2560. It demonstrates the use of Bresenham's algorithm to control LED brightness as introduced in previous steps. It is suggested to load the program now in the Arduino IDE and connect the three LEDs as explained in the introduction.
+
 The program (containing detailed comments) continuously dims 3 LEDs and then increases brightness again.
+
 A few key sections are highlighted below.
 
 ### Preprocessor constant
